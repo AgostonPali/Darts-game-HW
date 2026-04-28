@@ -9,40 +9,43 @@ import physics
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Darts Szimulátor")
+pygame.display.set_caption("Darts Simulator Pro")
 clock = pygame.time.Clock()
 
-# Modern fontok (ha nincs a rendszeren, visszavált alapra)
+# Fontok
 font = pygame.font.SysFont("Segoe UI, Arial", 22, bold=True)
+small_font = pygame.font.SysFont("Segoe UI, Arial", 16, bold=True)
 title_font = pygame.font.SysFont("Segoe UI, Arial", 56, bold=True)
-score_font = pygame.font.SysFont("Segoe UI, Arial", 36, bold=True)
+score_font = pygame.font.SysFont("Segoe UI, Arial", 42, bold=True)
 
 class GameState:
     MENU = 0
     PLAYING = 1
-    GAMEOVER = 2
+    WAITING_FOR_NEXT_TURN = 2
+    GAMEOVER = 3
 
-# Állapotok
+# Állapotok és globális változók
 state = GameState.MENU
-player_score = 501
-pc_score = 501
+player_score = 301
+pc_score = 301
 current_turn = "PLAYER" 
 darts_thrown = 0
-darts_on_board = [] # (x, y, is_pc)
+darts_on_board = [] 
+turn_scores = [] # Az aktuális 3 dobás értéke
 
-# Új célzási változók
-action_phase = "AIM_X" # "AIM_X", "POWER", "FLYING", "WAIT"
+action_phase = "AIM_X" 
 aim_x_val = BOARD_CENTER[0]
 aim_x_dir = 1
 power_level = 0.0
 power_dir = 1
 flying_dart = None 
-pc_timer = 0
+timer = 0 # Általános időzítő szünetekhez
 
-def reset_turn():
-    global darts_thrown, darts_on_board, action_phase, aim_x_val
+def reset_turn_data():
+    global darts_thrown, darts_on_board, action_phase, aim_x_val, turn_scores
     darts_thrown = 0
     darts_on_board.clear()
+    turn_scores.clear()
     action_phase = "AIM_X"
     aim_x_val = BOARD_CENTER[0]
 
@@ -51,125 +54,68 @@ def start_flight(is_pc=False):
     action_phase = "FLYING"
     hit_pos = physics.calculate_impact(aim_x_val, power_level)
     
-    start_pos = (WIDTH//2, HEIGHT)
-    # Szög a nyíl irányához (hogy a tábla felé mutasson repülés közben)
-    flight_angle = math.degrees(math.atan2(hit_pos[1] - start_pos[1], hit_pos[0] - start_pos[0])) + 90
-    
     flying_dart = {
-        "pos": start_pos, 
-        "target": hit_pos, 
-        "progress": 0.0, 
-        "angle": flight_angle,
+        "pos": (WIDTH//2, HEIGHT),
+        "target": hit_pos,
+        "progress": 0.0,
         "is_pc": is_pc
     }
 
 def draw_modern_dart(surface, x, y, angle_deg, scale):
-    """Kidolgozottabb nyíl megjelenítése forgatva és skálázva."""
     rad = math.radians(angle_deg)
     cos_a, sin_a = math.cos(rad), math.sin(rad)
     
     def transform(px, py):
-        # Elforgatás és eltolás a megadott (x,y) koordinátára
         rx = px * cos_a - py * sin_a
         ry = px * sin_a + py * cos_a
         return (x + rx * scale, y + ry * scale)
 
-    # 1. Hegy (ezüst)
-    pygame.draw.polygon(surface, SILVER, [transform(0,0), transform(5, 15), transform(-5, 15)])
-    
-    # 2. Test / Barrel (arany/réz recézve)
-    barrel_points = [transform(4, 15), transform(6, 45), transform(-6, 45), transform(-4, 15)]
-    pygame.draw.polygon(surface, (200, 160, 50), barrel_points)
-    # Recézés (grips) a testen
-    for i in range(20, 45, 4):
-        pygame.draw.line(surface, BLACK, transform(-5, i), transform(5, i), max(1, int(1*scale)))
-        
-    # 3. Szár (fekete)
-    pygame.draw.polygon(surface, (30, 30, 30), [transform(4, 45), transform(3, 80), transform(-3, 80), transform(-4, 45)])
-    
-    # 4. Toll (piros modern forma)
-    flight_points = [
-        transform(2, 70), transform(20, 95), transform(20, 110), transform(2, 100),
-        transform(-2, 100), transform(-20, 110), transform(-20, 95), transform(-2, 70)
-    ]
-    pygame.draw.polygon(surface, RED, flight_points)
-    pygame.draw.polygon(surface, BLACK, flight_points, 1)
+    # Hegy
+    pygame.draw.polygon(surface, SILVER, [transform(0,0), transform(4, 12), transform(-4, 12)])
+    # Test
+    pygame.draw.polygon(surface, (200, 160, 50), [transform(4, 12), transform(5, 40), transform(-5, 40), transform(-4, 12)])
+    # Szár
+    pygame.draw.line(surface, (30, 30, 30), transform(0, 40), transform(0, 75), max(1, int(4*scale)))
+    # Toll
+    f_pts = [transform(0, 70), transform(15, 95), transform(15, 105), transform(0, 95), 
+             transform(-15, 105), transform(-15, 95)]
+    pygame.draw.polygon(surface, RED, f_pts)
 
 def draw_ui():
-    # Játékos panelek árnyékolt háttérrel
-    pygame.draw.rect(screen, BOARD_BG, (10, 10, 200, 80), border_radius=10)
-    pygame.draw.rect(screen, BOARD_BG, (WIDTH - 210, 10, 200, 80), border_radius=10)
+    # Panelek
+    pygame.draw.rect(screen, BOARD_BG, (10, 10, 220, 120), border_radius=12)
+    pygame.draw.rect(screen, BOARD_BG, (WIDTH - 230, 10, 220, 120), border_radius=12)
     
-    screen.blit(font.render("JÁTÉKOS", True, GRAY), (20, 15))
-    screen.blit(score_font.render(str(player_score), True, WHITE), (20, 40))
+    # Játékos info
+    screen.blit(font.render("PLAYER", True, GRAY), (25, 15))
+    screen.blit(score_font.render(str(player_score), True, WHITE), (25, 35))
     
-    pc_lbl = font.render("GÉP", True, GRAY)
-    screen.blit(pc_lbl, (WIDTH - 20 - pc_lbl.get_width(), 15))
+    # Gép info
+    pc_lbl = font.render("COMPUTER", True, GRAY)
+    screen.blit(pc_lbl, (WIDTH - 25 - pc_lbl.get_width(), 15))
     pc_scr = score_font.render(str(pc_score), True, WHITE)
-    screen.blit(pc_scr, (WIDTH - 20 - pc_scr.get_width(), 40))
+    screen.blit(pc_scr, (WIDTH - 25 - pc_scr.get_width(), 35))
     
-    turn_text = font.render("TE JÖSSZ" if current_turn == "PLAYER" else "GÉP JÖN", True, RED if current_turn=="PLAYER" else GREEN)
-    screen.blit(turn_text, (WIDTH//2 - turn_text.get_width()//2, 30))
+    # Aktuális kör részeredményei
+    score_str = " + ".join([str(s) for s in turn_scores])
+    score_surf = small_font.render(score_str, True, GOLD)
+    if current_turn == "PLAYER":
+        screen.blit(score_surf, (25, 90))
+    else:
+        screen.blit(score_surf, (WIDTH - 25 - score_surf.get_width(), 90))
+
+    # Turn display
+    turn_text = font.render("PLAYER'S TURN" if current_turn == "PLAYER" else "COMPUTER'S TURN", 
+                            True, RED if current_turn == "PLAYER" else GREEN)
+    screen.blit(turn_text, (WIDTH//2 - turn_text.get_width()//2, 20))
     
-    # Nyilak a képernyő alján
+    # Készleten lévő nyilak (ikonok)
     for i in range(3 - darts_thrown):
-        draw_modern_dart(screen, 60 + i*50, HEIGHT - 100, 0, 0.8)
-
-def process_pc_turn():
-    global pc_timer, action_phase, aim_x_val, power_level
-    
-    pc_timer -= 1
-    if pc_timer <= 0:
-        if action_phase == "AIM_X":
-            aim_x_val = BOARD_CENTER[0] + random.randint(-20, 20)
-            action_phase = "POWER"
-            pc_timer = 30
-        elif action_phase == "POWER":
-            # Gép megpróbálja eltalálni az ideális 0.75-ös erőt
-            power_level = 0.75 + random.uniform(-0.06, 0.04) 
-            start_flight(is_pc=True)
-
-def draw_sliders():
-    # --- Vízszintes Célkereszt (AIM_X fázisban mozog) ---
-    slider_width = 400
-    slider_y = HEIGHT - 120
-    slider_x_start = WIDTH//2 - slider_width//2
-    
-    # Háttér sáv
-    pygame.draw.rect(screen, BLACK, (slider_x_start, slider_y, slider_width, 10), border_radius=5)
-    pygame.draw.rect(screen, GRAY, (slider_x_start, slider_y, slider_width, 10), 1, border_radius=5)
-    
-    # Közép jelölő
-    pygame.draw.line(screen, WHITE, (WIDTH//2, slider_y - 5), (WIDTH//2, slider_y + 15), 2)
-    
-    # Mozgó kurzor
-    cursor_x = max(slider_x_start, min(aim_x_val, slider_x_start + slider_width))
-    color_x = GOLD if action_phase == "AIM_X" else GRAY
-    pygame.draw.circle(screen, color_x, (int(cursor_x), slider_y + 5), 10)
-    
-    # Ha lerögzítettük az X-et, felrajzolunk egy halvány vonalat a táblára
-    if action_phase != "AIM_X":
-        pygame.draw.line(screen, (255, 215, 0, 100), (aim_x_val, 0), (aim_x_val, HEIGHT), 1)
-
-    # --- Függőleges Erősség Skála (POWER fázisban mozog) ---
-    p_width, p_height = 20, 300
-    p_x = WIDTH - 60
-    p_y = HEIGHT//2 - p_height//2
-    
-    pygame.draw.rect(screen, BLACK, (p_x, p_y, p_width, p_height), border_radius=10)
-    
-    # Optimális erőszint jelölő vonal (kb. 0.75)
-    ideal_y = p_y + p_height - int(0.75 * p_height)
-    pygame.draw.line(screen, GREEN, (p_x - 10, ideal_y), (p_x + p_width + 10, ideal_y), 3)
-    
-    # Aktuális erőszint
-    fill_h = int(power_level * p_height)
-    color_p = RED if action_phase == "POWER" else GRAY
-    pygame.draw.rect(screen, color_p, (p_x, p_y + p_height - fill_h, p_width, fill_h), border_radius=10)
+        draw_modern_dart(screen, 40 + i*35, HEIGHT - 70, 0, 0.6)
 
 def main():
     global state, aim_x_val, aim_x_dir, action_phase, power_level, power_dir
-    global darts_thrown, player_score, pc_score, flying_dart, current_turn, pc_timer
+    global darts_thrown, player_score, pc_score, flying_dart, current_turn, timer, turn_scores
 
     while True:
         screen.fill(DARK_BG)
@@ -178,12 +124,9 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-                
-            if state == GameState.MENU:
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    state = GameState.PLAYING
-                    reset_turn()
-                    
+            if state == GameState.MENU and event.type == pygame.MOUSEBUTTONDOWN:
+                state = GameState.PLAYING
+                reset_turn_data()
             elif state == GameState.PLAYING and current_turn == "PLAYER":
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if action_phase == "AIM_X":
@@ -193,94 +136,98 @@ def main():
                         start_flight(is_pc=False)
 
         if state == GameState.MENU:
-            # Modern menü árnyékos címmel
-            shadow = title_font.render("DARTS PRO", True, BLACK)
-            title = title_font.render("DARTS PRO", True, WHITE)
-            screen.blit(shadow, (WIDTH//2 - shadow.get_width()//2 + 3, HEIGHT//3 + 3))
+            title = title_font.render("DARTS PRO 301", True, WHITE)
             screen.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//3))
-            
-            # Gomb
-            btn_rect = pygame.Rect(WIDTH//2 - 150, HEIGHT//2, 300, 60)
+            btn_rect = pygame.Rect(WIDTH//2 - 120, HEIGHT//2, 240, 60)
             pygame.draw.rect(screen, RED, btn_rect, border_radius=30)
-            btn_txt = font.render("JÁTÉK INDÍTÁSA", True, WHITE)
+            btn_txt = font.render("START GAME", True, WHITE)
             screen.blit(btn_txt, (btn_rect.centerx - btn_txt.get_width()//2, btn_rect.centery - btn_txt.get_height()//2))
             
-        elif state == GameState.PLAYING:
+        elif state == GameState.PLAYING or state == GameState.WAITING_FOR_NEXT_TURN:
             dartboard.draw_board(screen, font)
-            
-            # Bedobott nyilak
-            for x, y, is_pc in darts_on_board:
+            for x, y, _ in darts_on_board:
                 draw_modern_dart(screen, x, y, 0, 0.4)
-            
             draw_ui()
-            
-            if current_turn == "PLAYER":
-                if action_phase == "AIM_X":
-                    # Nem lineáris sebesség számítása: középen gyorsabb
-                    dist_from_center = abs(aim_x_val - BOARD_CENTER[0])
-                    # Szorzó: szélén 1x, középen 3x sebesség
-                    speed_mult = 1.0 + (1.0 - min(1.0, dist_from_center / 200.0)) * 2.0
+
+            if state == GameState.PLAYING:
+                if current_turn == "PLAYER":
+                    if action_phase == "AIM_X":
+                        dist = abs(aim_x_val - BOARD_CENTER[0])
+                        speed_mult = 1.0 + (1.0 - min(1.0, dist / 200.0)) * 1.2
+                        aim_x_val += (3.5 * speed_mult) * aim_x_dir
+                        if aim_x_val > BOARD_CENTER[0] + 200 or aim_x_val < BOARD_CENTER[0] - 200:
+                            aim_x_dir *= -1
+                    elif action_phase == "POWER":
+                        power_level += 0.015 * power_dir
+                        if power_level >= 1.0 or power_level <= 0.0: power_dir *= -1
                     
-                    aim_x_val += (4 * speed_mult) * aim_x_dir
+                    if action_phase in ["AIM_X", "POWER"]:
+                        # UI Sliders & Target Point
+                        s_x = WIDTH//2 - 200
+                        pygame.draw.rect(screen, BLACK, (s_x, HEIGHT-100, 400, 10), border_radius=5)
+                        pygame.draw.circle(screen, GOLD if action_phase=="AIM_X" else GRAY, 
+                                           (int(max(s_x, min(aim_x_val, s_x+400))), HEIGHT-95), 10)
+                        if action_phase == "POWER":
+                            px, py = physics.calculate_impact(aim_x_val, power_level)
+                            pygame.draw.circle(screen, GOLD, (px, py), 6, 2)
+                
+                elif current_turn == "COMPUTER" and action_phase != "FLYING":
+                    timer += 1
+                    if timer > 60: # Gép gondolkodási ideje dobások között
+                        aim_x_val = BOARD_CENTER[0] + random.randint(-40, 40)
+                        power_level = 0.75 + random.uniform(-0.1, 0.08)
+                        start_flight(is_pc=True)
+                        timer = 0
+
+                if action_phase == "FLYING":
+                    fd = flying_dart
+                    # Sebesség: 0.015-ről 0.035-re növelve a dinamizmusért
+                    fd["progress"] += 0.035
+                    t = fd["progress"]
                     
-                    if aim_x_val > BOARD_CENTER[0] + 200 or aim_x_val < BOARD_CENTER[0] - 200:
-                        aim_x_dir *= -1
+                    # Pozíció számítás ívvel
+                    arc = 250 * (0.5 + power_level/2)
+                    curr_x = fd["pos"][0] + (fd["target"][0] - fd["pos"][0]) * t
+                    curr_y = fd["pos"][1] + (fd["target"][1] - fd["pos"][1]) * t - arc * math.sin(math.pi * t)
+                    
+                    # Érintő alapú dőlésszög (felfelé állásból lefelé billenés)
+                    # Közelítő derivált a dőléshez
+                    dt = 0.01
+                    next_y = fd["pos"][1] + (fd["target"][1] - fd["pos"][1]) * (t+dt) - arc * math.sin(math.pi * (t+dt))
+                    next_x = fd["pos"][0] + (fd["target"][0] - fd["pos"][0]) * (t+dt)
+                    angle = math.degrees(math.atan2(next_y - curr_y, next_x - curr_x)) + 90
+                    
+                    draw_modern_dart(screen, curr_x, curr_y, angle, 1.5 - t)
+
+                    if t >= 1.0:
+                        score = dartboard.get_score(fd["target"][0], fd["target"][1])
+                        turn_scores.append(score)
+                        darts_on_board.append((fd["target"][0], fd["target"][1], fd["is_pc"]))
                         
-                elif action_phase == "POWER":
-                    # Kicsit lassított erősség csúszka
-                    power_level += 0.015 * power_dir
-                    if power_level >= 1.0:
-                        power_level = 1.0
-                        power_dir = -1
-                    elif power_level <= 0.0:
-                        power_level = 0.0
-                        power_dir = 1
-            
-            elif current_turn == "PC" and action_phase != "FLYING":
-                process_pc_turn()
-            
-            # Skálák rajzolása az UI fölé
-            if action_phase in ["AIM_X", "POWER"]:
-                draw_sliders()
-            
-            if action_phase == "FLYING":
-                fd = flying_dart
-                fd["progress"] += 0.05
-                
-                # Z-tengely mélység szimulációja skálázással (nyíl kisebb lesz ahogy távolodik)
-                current_scale = 1.5 - fd["progress"]
-                
-                cx = int(fd["pos"][0] + (fd["target"][0] - fd["pos"][0]) * fd["progress"])
-                cy = int(fd["pos"][1] + (fd["target"][1] - fd["pos"][1]) * fd["progress"])
-                
-                draw_modern_dart(screen, cx, cy, fd["angle"], max(0.4, current_scale))
-                
-                if fd["progress"] >= 1.0:
-                    darts_on_board.append((fd["target"][0], fd["target"][1], fd["is_pc"]))
-                    score = dartboard.get_score(fd["target"][0], fd["target"][1])
-                    
-                    if fd["is_pc"]:
-                        pc_score = max(0, pc_score - score)
-                    else:
-                        player_score = max(0, player_score - score)
+                        if fd["is_pc"]: pc_score = max(0, pc_score - score)
+                        else: player_score = max(0, player_score - score)
                         
-                    darts_thrown += 1
-                    
-                    if player_score == 0 or pc_score == 0:
-                        state = GameState.GAMEOVER
-                    elif darts_thrown >= 3:
-                        current_turn = "PC" if current_turn == "PLAYER" else "PLAYER"
-                        pc_timer = 40
-                        reset_turn()
-                    else:
-                        action_phase = "AIM_X"
-                        pc_timer = 40
-                
+                        darts_thrown += 1
+                        if player_score == 0 or pc_score == 0: state = GameState.GAMEOVER
+                        elif darts_thrown >= 3:
+                            state = GameState.WAITING_FOR_NEXT_TURN
+                            timer = 0
+                        else:
+                            action_phase = "AIM_X"
+            
+            # Forduló utáni várakozás
+            if state == GameState.WAITING_FOR_NEXT_TURN:
+                timer += 1
+                if timer > 90: # Kb. 1.5 másodperc szünet
+                    current_turn = "COMPUTER" if current_turn == "PLAYER" else "PLAYER"
+                    reset_turn_data()
+                    state = GameState.PLAYING
+                    timer = 0
+
         elif state == GameState.GAMEOVER:
-            winner = "JÁTÉKOS" if player_score == 0 else "GÉP"
-            pygame.draw.rect(screen, BOARD_BG, (WIDTH//2 - 200, HEIGHT//2 - 60, 400, 120), border_radius=20)
-            end_text = title_font.render(f"{winner} NYERT!", True, GREEN)
-            screen.blit(end_text, (WIDTH//2 - end_text.get_width()//2, HEIGHT//2 - end_text.get_height()//2))
+            msg = "PLAYER WINS!" if player_score == 0 else "COMPUTER WINS!"
+            txt = title_font.render(msg, True, GREEN)
+            screen.blit(txt, (WIDTH//2 - txt.get_width()//2, HEIGHT//2))
 
         pygame.display.flip()
         clock.tick(FPS)

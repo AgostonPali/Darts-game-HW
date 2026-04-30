@@ -10,7 +10,7 @@ pygame.init()
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 virtual_surface = pygame.Surface((WIDTH, HEIGHT)) 
-pygame.display.set_caption("Darts Simulator Pro")
+pygame.display.set_caption("Darts Game - 301 Edition")
 clock = pygame.time.Clock()
 is_fullscreen = False
 
@@ -177,7 +177,7 @@ def main():
                     start_flight(is_pc=False)
 
         if state == GameState.MENU:
-            title = title_font.render("DARTS PRO 301", True, WHITE)
+            title = title_font.render("DARTS GAME 301", True, WHITE)
             virtual_surface.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//3))
             pygame.draw.rect(virtual_surface, RED, btn_rect, border_radius=30)
             btn_txt = font.render("START GAME", True, WHITE)

@@ -1,24 +1,25 @@
 # config.py
 import math
 
-# Belső logikai felbontás (A fullscreen ehhez képest skálázódik)
 WIDTH, HEIGHT = 800, 800
 FPS = 60
 
-# Modern Színpaletta
-DARK_BG = (26, 26, 46)       
-BOARD_BG = (22, 33, 62)      
+# Bővített színpaletta alpha csatornákhoz és effektekhez
+DARK_BG_CENTER = (40, 45, 65)
+DARK_BG_EDGE = (10, 10, 15)
+BOARD_BG = (22, 33, 62, 180) # RGBA a transzparens panelekhez
 WHITE = (240, 240, 245)
 BLACK = (15, 15, 20)
-RED = (233, 69, 96)          
-GREEN = (42, 157, 143)       
-BEIGE = (241, 250, 238)
+SHADOW = (0, 0, 0, 150)
+RED = (220, 40, 60)          
+GREEN = (30, 140, 100)       
+BEIGE = (245, 240, 210)
 GRAY = (140, 140, 150)
 GOLD = (255, 215, 0)
-SILVER = (192, 192, 192)
+SILVER = (210, 210, 220)
+WIRE_COLOR = (180, 180, 190)
 
-# Céltábla méretei és nagyítása
-PIXELS_PER_METER = 1000  # A korábbi 800 helyett, így a tábla láthatóan nagyobb lett
+PIXELS_PER_METER = 1000  
 BOARD_CENTER = (WIDTH // 2, HEIGHT // 2 - 60)
 
 R_BULL_INNER = int(0.00635 * PIXELS_PER_METER)
@@ -29,5 +30,4 @@ R_DOUBLE_INNER = int(0.162 * PIXELS_PER_METER)
 R_DOUBLE_OUTER = int(0.170 * PIXELS_PER_METER)
 R_BOARD = int(0.226 * PIXELS_PER_METER)
 
-# Darts szektorok
 SECTORS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]

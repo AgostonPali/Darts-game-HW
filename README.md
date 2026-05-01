@@ -1,4 +1,4 @@
-# Mechatronikai szimuláció: Darts game
+# Mechatronic Simulation: Darts Pro 301
 
 ## Project Description
 This project is a 2D, physics-based darts simulator developed for a university mechatronic simulation assignment. The program utilizes the kinematic equations of projectile motion to calculate the dart's flight trajectory based on the user's horizontal and vertical aiming inputs.
@@ -14,4 +14,28 @@ A Python 3.x environment is required to run the simulation.
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/<YOUR_USERNAME>/<YOUR_REPOSITORY_NAME>.git
+   ```
+2. Navigate into the project directory:
+   ```bash
+   cd <YOUR_REPOSITORY_NAME>
+   ```
+3. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Usage and Controls
+1. Launch the simulation from your terminal:
+   ```bash
+   python main.py
+   ```
+2. **Aiming System:** During the player's turn, the aiming cursors move automatically.
+   * **First Left-Click:** Locks the horizontal (X-axis) direction.
+   * **Second Left-Click:** Locks the vertical (Y-axis) elevation and throws the dart.
+3. **Display Settings:** Press the **F11** key at any time to toggle between Windowed and Fullscreen modes.
+
+## File Structure
+*   **`main.py`**: The entry point of the program. Manages the State Machine, the main game loop, event handling, rendering, and physics animation calculations.
+*   **`config.py`**: Stores global simulation constants, scaling factors (pixels-to-meters conversion), and the RGBA color palette.
+*   **`dartboard.py`**: Handles the geometric construction of the dartboard (sectors, spider wire) and calculates the exact score based on impact coordinates.

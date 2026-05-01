@@ -14,11 +14,11 @@ A Python 3.x environment is required to run the simulation.
 
 1. Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/<YOUR_USERNAME>/<YOUR_REPOSITORY_NAME>.git
+   git clone https://github.com/AgostonPali/Darts-game-HW.git
    ```
 2. Navigate into the project directory:
    ```bash
-   cd <YOUR_REPOSITORY_NAME>
+   cd <Darts-game-HW>
    ```
 3. Install the required dependencies:
    ```bash

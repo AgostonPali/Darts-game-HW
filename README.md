@@ -18,7 +18,7 @@ A Python 3.x environment is required to run the simulation.
    ```
 2. Navigate into the project directory:
    ```bash
-   cd <Darts-game-HW>
+   cd Darts-game-HW
    ```
 3. Install the required dependencies:
    ```bash

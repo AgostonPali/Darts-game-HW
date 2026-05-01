@@ -24,7 +24,6 @@ def draw_board(surface, font):
         draw_pie_slice(surface, BOARD_CENTER, R_TRIPLE_OUTER, start_angle, end_angle, color2, R_TRIPLE_INNER)
         
         text_angle = math.radians(90 - (i * angle_step))
-        # A számok új pozíciója a vékonyított keretben
         text_r = R_BOARD - 11 
         tx = BOARD_CENTER[0] + text_r * math.cos(text_angle)
         ty = BOARD_CENTER[1] - text_r * math.sin(text_angle)

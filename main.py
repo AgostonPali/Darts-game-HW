@@ -102,7 +102,7 @@ def draw_modern_dart(surface, x, y, angle_deg, scale):
         ry = px * sin_a + py * cos_a
         return (x + rx * scale, y + ry * scale)
 
-    # Árnyék (csak repülés közben látható igazán az eltolás miatt)
+    # Árnyék
     shadow_pts = [transform(0, 50), transform(10, 100), transform(-10, 100)]
     pygame.draw.polygon(surface, SHADOW, shadow_pts)
 

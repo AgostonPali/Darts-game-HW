@@ -1,4 +1,4 @@
-# Mechatronic Simulation: Darts Pro 301
+# Mechatronic Simulation: Darts Game 301
 
 ## Project Description
 This project is a 2D, physics-based darts simulator developed for a university mechatronic simulation assignment. The program utilizes the kinematic equations of projectile motion to calculate the dart's flight trajectory based on the user's horizontal and vertical aiming inputs.

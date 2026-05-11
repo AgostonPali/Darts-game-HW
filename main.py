@@ -31,7 +31,7 @@ current_turn = "PLAYER"
 darts_thrown = 0
 darts_on_board = [] 
 turn_scores = [] 
-particles = [] # Becsapódási effektek tárolója
+particles = [] 
 
 action_phase = "AIM_X" 
 aim_x_val = BOARD_CENTER[0]
@@ -40,7 +40,6 @@ aim_y_val = BOARD_CENTER[1]
 flying_dart = None 
 timer = 0 
 
-# Előre renderelt háttér és UI rétegek
 bg_surface = pygame.Surface((WIDTH, HEIGHT))
 for y in range(HEIGHT):
     for x in range(WIDTH):
@@ -87,7 +86,7 @@ def update_and_draw_particles(surface):
     for p in reversed(particles):
         p[0] += p[2]
         p[1] += p[3]
-        p[4] -= 10 # Fade out sebesség
+        p[4] -= 10 
         if p[4] <= 0:
             particles.remove(p)
         else:
@@ -102,25 +101,22 @@ def draw_modern_dart(surface, x, y, angle_deg, scale):
         ry = px * sin_a + py * cos_a
         return (x + rx * scale, y + ry * scale)
 
-    # Árnyék
     shadow_pts = [transform(0, 50), transform(10, 100), transform(-10, 100)]
     pygame.draw.polygon(surface, SHADOW, shadow_pts)
-
     pygame.draw.polygon(surface, SILVER, [transform(0,0), transform(4, 12), transform(-4, 12)])
     
-    # Henger test fémes csillogással
     barrel_pts = [transform(4, 12), transform(5, 40), transform(-5, 40), transform(-4, 12)]
     pygame.draw.polygon(surface, (210, 170, 40), barrel_pts)
-    pygame.draw.polygon(surface, (255, 240, 180), [transform(1, 15), transform(2, 38), transform(0, 38), transform(-1, 15)]) # Highlight
+    pygame.draw.polygon(surface, (255, 240, 180), [transform(1, 15), transform(2, 38), transform(0, 38), transform(-1, 15)]) 
     
     pygame.draw.line(surface, (30, 30, 30), transform(0, 40), transform(0, 75), max(1, int(4*scale)))
     
     f_pts = [transform(0, 70), transform(15, 95), transform(15, 105), transform(0, 95), 
              transform(-15, 105), transform(-15, 95)]
     pygame.draw.polygon(surface, RED, f_pts)
-    pygame.draw.polygon(surface, (150, 20, 20), [transform(0, 70), transform(15, 95), transform(0, 95)]) # Toll árnyékolás
+    pygame.draw.polygon(surface, (150, 20, 20), [transform(0, 70), transform(15, 95), transform(0, 95)])
 
-def draw_ui(surface):
+def draw_ui(surface, menu_btn_rect):
     surface.blit(ui_surface, (0, 0))
     surface.blit(font.render("PLAYER", True, GRAY), (25, 15))
     surface.blit(score_font.render(str(player_score), True, WHITE), (25, 35))
@@ -139,6 +135,12 @@ def draw_ui(surface):
     
     for i in range(3 - darts_thrown):
         draw_modern_dart(surface, 40 + i*35, HEIGHT - 70, 0, 0.6)
+    
+    # Exit to Menu gomb a jobb alsó sarokban
+    pygame.draw.rect(surface, BOARD_BG, menu_btn_rect, border_radius=10)
+    pygame.draw.rect(surface, GRAY, menu_btn_rect, width=1, border_radius=10)
+    btn_text = small_font.render("MENU (ESC)", True, WHITE)
+    surface.blit(btn_text, (menu_btn_rect.centerx - btn_text.get_width()//2, menu_btn_rect.centery - btn_text.get_height()//2))
 
 def main():
     global state, aim_x_val, aim_x_dir, aim_y_val, aim_y_dir, action_phase
@@ -146,7 +148,12 @@ def main():
     global player_start_score, pc_start_score
 
     btn_rect = pygame.Rect(WIDTH//2 - 120, HEIGHT//2, 240, 60)
+    dist_btn_rect = pygame.Rect(WIDTH//2 - 120, HEIGHT//2 + 80, 240, 60)
     restart_btn_rect = pygame.Rect(WIDTH//2 - 120, HEIGHT//2 + 20, 240, 60)
+    menu_btn_rect = pygame.Rect(WIDTH - 110, HEIGHT - 50, 100, 40)
+    
+    distances = [1.50, 2.37, 3.00, 4.00]
+    current_dist_idx = 1
 
     while True:
         virtual_surface.blit(bg_surface, (0, 0))
@@ -156,32 +163,52 @@ def main():
                 pygame.quit()
                 sys.exit()
                 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
-                is_fullscreen = not is_fullscreen
-                screen = pygame.display.set_mode((0, 0) if is_fullscreen else (WIDTH, HEIGHT), pygame.FULLSCREEN if is_fullscreen else pygame.RESIZABLE)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F11:
+                    is_fullscreen = not is_fullscreen
+                    screen = pygame.display.set_mode((0, 0) if is_fullscreen else (WIDTH, HEIGHT), pygame.FULLSCREEN if is_fullscreen else pygame.RESIZABLE)
+                # ESC gomb visszadob a menübe
+                if event.key == pygame.K_ESCAPE and state != GameState.MENU:
+                    state = GameState.MENU
 
-            if state == GameState.MENU and event.type == pygame.MOUSEBUTTONDOWN:
-                if btn_rect.collidepoint(get_scaled_mouse_pos()) or is_fullscreen:
-                    state, player_score, pc_score, player_start_score, pc_start_score, current_turn = GameState.PLAYING, 301, 301, 301, 301, "PLAYER"
-                    reset_turn_data()
-                    
-            elif state == GameState.GAMEOVER and event.type == pygame.MOUSEBUTTONDOWN:
-                if restart_btn_rect.collidepoint(get_scaled_mouse_pos()):
-                    state, player_score, pc_score, player_start_score, pc_start_score, current_turn = GameState.PLAYING, 301, 301, 301, 301, "PLAYER"
-                    reset_turn_data()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = get_scaled_mouse_pos()
+                
+                # Menü gomb kezelése bármikor játék közben
+                if state in (GameState.PLAYING, GameState.WAITING_FOR_NEXT_TURN) and menu_btn_rect.collidepoint((mx, my)):
+                    state = GameState.MENU
+                    continue
 
-            elif state == GameState.PLAYING and current_turn == "PLAYER" and event.type == pygame.MOUSEBUTTONDOWN:
-                if action_phase == "AIM_X":
-                    action_phase, aim_y_val, aim_y_dir = "AIM_Y", BOARD_CENTER[1] + R_BOARD, -1
-                elif action_phase == "AIM_Y":
-                    start_flight(is_pc=False)
+                if state == GameState.MENU:
+                    if btn_rect.collidepoint((mx, my)):
+                        state, player_score, pc_score, player_start_score, pc_start_score, current_turn = GameState.PLAYING, 301, 301, 301, 301, "PLAYER"
+                        reset_turn_data()
+                    elif dist_btn_rect.collidepoint((mx, my)):
+                        current_dist_idx = (current_dist_idx + 1) % len(distances)
+                        BoardConfig.set_distance(distances[current_dist_idx])
+                        
+                elif state == GameState.GAMEOVER:
+                    if restart_btn_rect.collidepoint((mx, my)):
+                        state, player_score, pc_score, player_start_score, pc_start_score, current_turn = GameState.PLAYING, 301, 301, 301, 301, "PLAYER"
+                        reset_turn_data()
+
+                elif state == GameState.PLAYING and current_turn == "PLAYER":
+                    if action_phase == "AIM_X":
+                        action_phase, aim_y_val, aim_y_dir = "AIM_Y", BOARD_CENTER[1] + BoardConfig.R_BOARD, -1
+                    elif action_phase == "AIM_Y":
+                        start_flight(is_pc=False)
 
         if state == GameState.MENU:
             title = title_font.render("DARTS GAME 301", True, WHITE)
-            virtual_surface.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//3))
+            virtual_surface.blit(title, (WIDTH//2 - title.get_width()//2, HEIGHT//3 - 30))
+            
             pygame.draw.rect(virtual_surface, RED, btn_rect, border_radius=30)
             btn_txt = font.render("START GAME", True, WHITE)
             virtual_surface.blit(btn_txt, (btn_rect.centerx - btn_txt.get_width()//2, btn_rect.centery - btn_txt.get_height()//2))
+
+            pygame.draw.rect(virtual_surface, BOARD_BG, dist_btn_rect, border_radius=30)
+            dist_txt = font.render(f"DISTANCE: {distances[current_dist_idx]:.2f}m", True, GOLD)
+            virtual_surface.blit(dist_txt, (dist_btn_rect.centerx - dist_txt.get_width()//2, dist_btn_rect.centery - dist_txt.get_height()//2))
             
         elif state in (GameState.PLAYING, GameState.WAITING_FOR_NEXT_TURN):
             dartboard.draw_board(virtual_surface, font)
@@ -190,7 +217,7 @@ def main():
                 draw_modern_dart(virtual_surface, x, y, 0, 0.4)
             
             update_and_draw_particles(virtual_surface)
-            draw_ui(virtual_surface)
+            draw_ui(virtual_surface, menu_btn_rect)
 
             if state == GameState.PLAYING:
                 if current_turn == "PLAYER":
@@ -200,8 +227,8 @@ def main():
                         if aim_x_val > BOARD_CENTER[0] + 200 or aim_x_val < BOARD_CENTER[0] - 200: aim_x_dir *= -1
                     elif action_phase == "AIM_Y":
                         dist_y = abs(aim_y_val - BOARD_CENTER[1])
-                        aim_y_val += (3.5 * (R_BOARD / 200.0) * (1.0 + (1.0 - min(1.0, dist_y / float(R_BOARD))) * 1.2)) * aim_y_dir
-                        if aim_y_val > BOARD_CENTER[1] + R_BOARD + 10 or aim_y_val < BOARD_CENTER[1] - R_BOARD - 10: aim_y_dir *= -1
+                        aim_y_val += (3.5 * (BoardConfig.R_BOARD / 200.0) * (1.0 + (1.0 - min(1.0, dist_y / float(BoardConfig.R_BOARD))) * 1.2)) * aim_y_dir
+                        if aim_y_val > BOARD_CENTER[1] + BoardConfig.R_BOARD + 10 or aim_y_val < BOARD_CENTER[1] - BoardConfig.R_BOARD - 10: aim_y_dir *= -1
                     
                     if action_phase in ("AIM_X", "AIM_Y"):
                         s_x = WIDTH//2 - 200
@@ -210,29 +237,29 @@ def main():
                         
                         if action_phase == "AIM_Y":
                             pygame.draw.circle(virtual_surface, GOLD, (int(aim_x_val), int(aim_y_val)), 6, 2)
-                            p_w, p_h, p_x, p_y = 16, R_BOARD * 2 + 20, WIDTH - 60, BOARD_CENTER[1] - R_BOARD - 10
+                            p_w, p_h, p_x, p_y = 16, BoardConfig.R_BOARD * 2 + 20, WIDTH - 60, BOARD_CENTER[1] - BoardConfig.R_BOARD - 10
                             pygame.draw.rect(virtual_surface, BLACK, (p_x, p_y, p_w, p_h), border_radius=8)
                             pygame.draw.line(virtual_surface, GREEN, (p_x - 10, BOARD_CENTER[1]), (p_x + p_w + 10, BOARD_CENTER[1]), 3)
-                            pygame.draw.line(virtual_surface, GOLD, (p_x - 10, BOARD_CENTER[1] - (R_TRIPLE_INNER + R_TRIPLE_OUTER) / 2), (p_x + p_w + 10, BOARD_CENTER[1] - (R_TRIPLE_INNER + R_TRIPLE_OUTER) / 2), 3)
+                            pygame.draw.line(virtual_surface, GOLD, (p_x - 10, BOARD_CENTER[1] - (BoardConfig.R_TRIPLE_INNER + BoardConfig.R_TRIPLE_OUTER) / 2), (p_x + p_w + 10, BOARD_CENTER[1] - (BoardConfig.R_TRIPLE_INNER + BoardConfig.R_TRIPLE_OUTER) / 2), 3)
                             pygame.draw.circle(virtual_surface, RED, (p_x + p_w//2, int(aim_y_val)), 8)
                 
                 elif current_turn == "COMPUTER" and action_phase != "FLYING":
                     timer += 1
                     if timer > 60:
-                        aim_x_val, aim_y_val = BOARD_CENTER[0] + random.randint(-35, 35), BOARD_CENTER[1] - (R_TRIPLE_INNER + R_TRIPLE_OUTER)/2 + random.randint(-35, 35)
+                        aim_x_val, aim_y_val = BOARD_CENTER[0] + random.randint(-35, 35), BOARD_CENTER[1] - (BoardConfig.R_TRIPLE_INNER + BoardConfig.R_TRIPLE_OUTER)/2 + random.randint(-35, 35)
                         start_flight(is_pc=True)
                         timer = 0
 
                 if action_phase == "FLYING":
                     fd = flying_dart
-                    fd["progress"] += 0.035
+                    fd["progress"] += 0.035 * (2.37 / BoardConfig.DISTANCE)
                     t = fd["progress"]
                     
-                    arc = (HEIGHT - fd["target"][1]) * 0.4
+                    arc = (HEIGHT - fd["target"][1]) * 0.4 * (BoardConfig.DISTANCE / 2.37)
+                    
                     curr_x = fd["pos"][0] + (fd["target"][0] - fd["pos"][0]) * t
                     curr_y = fd["pos"][1] + (fd["target"][1] - fd["pos"][1]) * t - arc * math.sin(math.pi * t)
                     
-                    # Dinamikus árnyék a táblán
                     shadow_y = fd["target"][1] + (1-t)*100
                     pygame.draw.ellipse(virtual_surface, SHADOW, (curr_x - 10*t, shadow_y, 20*t, 10*t))
 

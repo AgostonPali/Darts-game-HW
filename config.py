@@ -18,15 +18,31 @@ GOLD = (255, 215, 0)
 SILVER = (210, 210, 220)
 WIRE_COLOR = (180, 180, 190)
 
-PIXELS_PER_METER = 1150  
 BOARD_CENTER = (WIDTH // 2, HEIGHT // 2 - 40)
-
-R_BULL_INNER = int(0.00635 * PIXELS_PER_METER)
-R_BULL_OUTER = int(0.0159 * PIXELS_PER_METER)
-R_TRIPLE_INNER = int(0.099 * PIXELS_PER_METER)
-R_TRIPLE_OUTER = int(0.107 * PIXELS_PER_METER)
-R_DOUBLE_INNER = int(0.162 * PIXELS_PER_METER)
-R_DOUBLE_OUTER = int(0.170 * PIXELS_PER_METER)
-R_BOARD = int(0.190 * PIXELS_PER_METER)
-
 SECTORS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+class BoardConfig:
+    DISTANCE = 2.37
+    PIXELS_PER_METER = 1150
+    R_BULL_INNER = 0
+    R_BULL_OUTER = 0
+    R_TRIPLE_INNER = 0
+    R_TRIPLE_OUTER = 0
+    R_DOUBLE_INNER = 0
+    R_DOUBLE_OUTER = 0
+    R_BOARD = 0
+
+    @classmethod
+    def set_distance(cls, meters):
+        cls.DISTANCE = meters
+        cls.PIXELS_PER_METER = int(1150 * (2.37 / meters))
+        cls.R_BULL_INNER = int(0.00635 * cls.PIXELS_PER_METER)
+        cls.R_BULL_OUTER = int(0.0159 * cls.PIXELS_PER_METER)
+        cls.R_TRIPLE_INNER = int(0.099 * cls.PIXELS_PER_METER)
+        cls.R_TRIPLE_OUTER = int(0.107 * cls.PIXELS_PER_METER)
+        cls.R_DOUBLE_INNER = int(0.162 * cls.PIXELS_PER_METER)
+        cls.R_DOUBLE_OUTER = int(0.170 * cls.PIXELS_PER_METER)
+        cls.R_BOARD = int(0.190 * cls.PIXELS_PER_METER)
+
+# Inicializálás standard távolsággal
+BoardConfig.set_distance(2.37)
